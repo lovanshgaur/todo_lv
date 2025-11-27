@@ -1,12 +1,17 @@
-import ToDoItem from "./ToDoItem"
+import ToDoItem from "./ToDoItem";
 
+const tasks = ["task 1", "task 2", "task 3", "task 4", "task 5"];
 const ToDoList = () => {
+  function handleDone(name) {
+    console.log("Done", name);
+  }
   return (
     <>
-      <h1>ToDoList Working</h1>
-      <ToDoItem />
+      {tasks.map((task, index) => (
+        <ToDoItem key={index} task={task} onDone={handleDone} />
+      ))}
     </>
-  )
-}
+  );
+};
 
-export default ToDoList
+export default ToDoList;
