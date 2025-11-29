@@ -1,86 +1,126 @@
 // ./src/ToDoList.jsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ToDoItem from "./ToDoItem";
+import ToDoSearch from "./ToDoSearch";
 
 const ToDoList = () => {
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "task 1", completed: false },
-    { id: 2, text: "task 2", completed: false },
-    { id: 3, text: "task 3", completed: false },
-    { id: 4, text: "task 4", completed: false },
-    { id: 5, text: "task 5", completed: false }
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [taskNum, setTaskNum] = useState(1);
+  const [remainingTasks, setRemainingTasks] = useState(0);
 
-  const [taskNum, setTaskNum] = useState(tasks.length + 1);
-  const [remainingTasks, setremainingTasks] = useState(tasks.length);
+  // prevents saving before loading completed
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  function handleDone(input) {
-    console.log(input);
+  // -----------------------------
+  // LOAD tasks from localStorage
+  // -----------------------------
+  useEffect(() => {
+    const saved = localStorage.getItem("tasks");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setTasks(parsed);
+
+      // calculate remaining tasks on load
+      const remaining = parsed.filter((t) => !t.completed).length;
+      setRemainingTasks(remaining);
+
+      // next ID logic
+      const maxId = parsed.length
+        ? Math.max(...parsed.map((task) => task.id)) + 1
+        : 1;
+      setTaskNum(maxId);
+    }
+    setHasLoaded(true);
+  }, []);
+
+  // -----------------------------
+  // SAVE tasks to localStorage
+  // -----------------------------
+  useEffect(() => {
+    if (!hasLoaded) return; 
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks, hasLoaded]);
+
+  // -----------------------------
+  // Core Task Functions
+  // -----------------------------
+  function handleDone(id) {
     const newTasks = tasks.map((task) =>
-      task.id === input ? { ...task, completed: !task.completed } : task
+      task.id === id ? { ...task, completed: !task.completed } : task
     );
     setTasks(newTasks);
-    handleRemainingTasks(newTasks);
-    console.log(newTasks)
+
+    const remaining = newTasks.filter((t) => !t.completed).length;
+    setRemainingTasks(remaining);
   }
-  function handleRemainingTasks(arr) {
-    const completedTasks = arr.filter((task) => task.completed !== false);
-    console.log(completedTasks);
-    const newTasks = arr.filter((n) => !completedTasks.includes(n));
-    const remainingTask = newTasks.length;
-    console.log(remainingTask);
-    setremainingTasks(remainingTask);
-  }
+
   function handleDelete(id) {
     const newTasks = tasks.filter((task) => task.id !== id);
-    console.log(newTasks);
     setTasks(newTasks);
+
+    const remaining = newTasks.filter((t) => !t.completed).length;
+    setRemainingTasks(remaining);
   }
 
   function handleAdd(name) {
-    if (name) {
-      console.log(taskNum);
-      const newTask = { id: taskNum, text: name, completed: false };
-      const newTasks = [...tasks, newTask];
-      setTasks(newTasks);
-      setInput("");
-      setTaskNum(taskNum + 1);
-      console.log("Added", newTasks);
-    } else {
-      console.error("No task Added");
-      //
+    if (!name.trim()) return;
+
+    const newTask = { id: taskNum, text: name.trim(), completed: false };
+    const newTasks = [...tasks, newTask];
+    setTasks(newTasks);
+
+    setTaskNum(taskNum + 1);
+
+    const remaining = newTasks.filter((t) => !t.completed).length;
+    setRemainingTasks(remaining);
+  }
+
+  function handleClearAll() {
+    if (confirm("Clear all todos?")) {
+      setTasks([]);
+      setRemainingTasks(0);
     }
   }
 
   function handleClearTasks() {
+    const newTasks = tasks.filter((task) => !task.completed);
     setTasks(newTasks);
-    const newTasks = tasks.filter((n) => !completedTasks.includes(n));
-    setTasks(newTasks);
+
+    const remaining = newTasks.length;
+    setRemainingTasks(remaining);
   }
 
-  const [input, setInput] = useState("");
+  // -----------------------------
+  // Render UI
+  // -----------------------------
   return (
     <>
-      <h3>{remainingTasks}</h3>
-      <p>{input}</p>
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      />
-      <button onClick={() => handleAdd(input)}>Add Task</button>
-      <button onClick={() => handleClearAll()}>Clear All</button>
-      <button onClick={() => handleClearTasks()}>Clear Completed</button>
+      <ToDoSearch onAdd={handleAdd} />
 
-      {tasks.map((task) => (
-        <ToDoItem
-          key={task.id}
-          task={task}
-          onDone={handleDone}
-          onDelete={handleDelete}
-        />
-      ))}
+      <div className="todo-list">
+        {tasks.map((task) => (
+          <ToDoItem
+            key={task.id}
+            task={task}
+            onDone={handleDone}
+            onDelete={handleDelete}
+          />
+        ))}
+      </div>
+
+      <footer>
+        <p>{remainingTasks} items left</p>
+
+        <div className="buttons">
+          <button className="btn ghost" onClick={handleClearAll}>
+            Clear All
+          </button>
+          <button className="btn ghost" onClick={handleClearTasks}>
+            Clear Completed
+          </button>
+        </div>
+      </footer>
     </>
   );
 };
